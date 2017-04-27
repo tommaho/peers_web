@@ -1,0 +1,50 @@
+
+.dataTables_filter{
+    position: fixed;
+    top: 185px;
+    right: 25px;
+    width: 500px;
+    height: 25px;
+    padding: 10px;
+    border: 1px solid;
+    background-color: lightgrey;
+}
+.dataTables_filter input { 
+    width: 400px; 
+    }
+
+
+#controls {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    width: 500px;
+    height: 75px;
+    padding: 10px;
+    border: 1px solid;
+    background-color: lightgrey;
+}
+
+#status {
+    position: fixed;
+    top: 130px;
+    right: 25px;
+    width: 500px;
+    height: 25px;
+    padding: 10px;
+    border: 1px solid;
+}
+
+.working {
+    background-color: yellow;
+}
+
+.complete {
+    background-color: green;
+}
+body {
+    font-family: "Open Sans", Arial, Helvetica, sans-serif;
+    color: #444;
+    background-color: #fefefe;
+    font-size: 1rem;
+}

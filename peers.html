@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Peer Institution Explorer</title>
+  
+	<link rel="stylesheet" type="text/css" href="css/jquery.dataTables.css">
+	<link rel="stylesheet" type="text/css" href="css/shCore.css">
+   	<link rel="stylesheet" type="text/css" href="css/peers.css">
+    <style>
+     
+    </style>
+	<script type="text/javascript" language="javascript" src="js/jquery-3.1.0.min.js">
+	</script>
+	<script type="text/javascript" language="javascript" src="js/jquery.dataTables.js">
+	</script>
+
+	<script type="text/javascript" language="javascript" src="data/programs.js">
+	</script>
+    <script type="text/javascript" language="javascript" src="data/schools.js">
+	</script>
+
+	<script type="text/javascript" language="javascript" class="init">
+
+	'use strict';
+
+var outerPeerData;
+
+var peers = (function(){
+  
+  var initReport, addRelativeRanks, getRelativeRank, compilePeerData, 
+    reloadTable, getTargetPrograms, setProgramCounts, getMatchCounts;
+  
+  var p_table, is_initialized = false, program_counts = {}; 
+
+  
+  setProgramCounts = function(){ //counts is defined in the parent scope 
+                                // and re-used after initialization
+    var cur_unit_id;
+
+    programs.forEach( function( element ) {
+
+      cur_unit_id = element["UNITID"];
+
+      if ( program_counts[ cur_unit_id ] ){
+				program_counts[ cur_unit_id ] += 1;
+			} 
+			else {
+				program_counts[ cur_unit_id ] = 1;
+			};
+    });
+  };
+
+  setProgramCounts(); 
+
+  getMatchCounts = function(target_programs){
+	  var matches = {}, 
+        match_count = 0,
+        cur_unit_id;
+
+    programs.forEach( function( element ) {
+      cur_unit_id = element["UNITID"];
+			
+      if( target_programs.indexOf (element["CIP-AW"] ) >= 0){ 
+        // if this cip_aw is in target_programs, we have a match
+      	match_count = 1;
+
+
+        if ( matches[ cur_unit_id ] ){ //if the in the matches array
+          matches[ cur_unit_id ] += match_count; // add it
+        } 
+        else {
+          matches[ cur_unit_id ] = match_count; 
+        };
+			} 
+			else {
+				match_count = 0;
+			};
+
+		});
+    
+    return matches;
+
+  };
+
+
+  getTargetPrograms = function( whose ){
+    return programs.filter(function test( x ){
+			return x["UNITID"] == whose
+		  }).map( function( x ){ return x["CIP-AW"] } ); 
+
+  };
+
+
+  var offloadRelativeRanks = function(who, peer_data, p_table){
+   
+    
+    var worker = new Worker("js/relative_rank_worker.js");
+    var for_who = peer_data.map(function(x){return x.thisid});
+
+    worker.postMessage([who, for_who, programs]);
+		
+		document.getElementById('status').innerHTML = 'calculating reverse ranks';
+    document.getElementById('status').className = 'working';
+
+		worker.onmessage = function(e){
+       
+			 if (e.data[0] === 999999){
+				 
+				 document.getElementById('status').innerHTML = 'complete';
+				 document.getElementById('status').className = 'complete';
+			 }
+			 else {
+        var peer_row_id = p_table.rows(
+        function (idx, data, node) {
+          return data.thisid == e.data[0];
+          }
+        ).indexes();
+				
+				try {
+          p_table.cell(p_table.row(peer_row_id), p_table.column(3))
+						.data(parseInt(e.data[1])).draw(false);      
+				}
+				catch (TypeError) {
+					console.log("ERROR: Orphaned update callback, premature re-initializaion.");
+					console.log("Lost data for:", e.data[0])
+				}
+			}
+		};
+  
+};
+
+
+	compilePeerData = function( targetID ){
+    var matches, target_programs, report, unit_ids,
+		  ext_props, pct_match, pct_of_programs, report_line;
+
+		report = [];	
+
+	  target_programs = getTargetPrograms(targetID);
+ 
+    matches = getMatchCounts(target_programs);
+		unit_ids = Object.keys( matches ); //only do the work for schools 
+                                      //having matches
+  	unit_ids.forEach( function( unit ){
+			if ( matches[unit] > 0 ){		//for each non-zero unitid in mathes:
+
+				ext_props = schools.filter( function test( x ){
+					return x["UNITID"] == unit
+				} );
+				
+				pct_match = matches[unit]  / matches[targetID];
+				pct_of_programs = matches[unit] / program_counts[unit];
+				
+				report_line = {
+					"targetid": targetID,
+					"thisid": unit,
+					
+					"reverseRank" : 0, //will be loaded from web worker
+					
+					"unitid": "<a id=" + unit + " onClick='peers.initReport("
+             + unit + ")' href='#'>" + unit + "</a>",
+					"name": "<a href='" + ext_props[0]["URL"] + "'>" 
+						 + ext_props[0]["NAME"]+ "</a>",
+					//"url": ext_props[0]["URL"],
+					"city": ext_props[0]["CITY"],
+					"state": ext_props[0]["STATE"],
+					"control": ext_props[0]["CONTROL"],
+					"degree": ext_props[0]["DEGREE"],
+					"locale": ext_props[0]["LOCALE"],
+					"size": ext_props[0]["SIZE"],
+					"programs": program_counts[unit],
+					"matches": matches[unit],
+					"pctMatch": pct_match.toFixed(3), 
+					"pctOfPrograms": pct_of_programs.toFixed(3)
+				};
+
+				report.push( report_line );
+
+			};
+				
+			});
+		
+		return report.sort( function( a, b ){ 
+			return b.pctMatch - a.pctMatch;
+		  } ).slice( 0, 100 );;
+	};
+
+initReport = function ( who ){
+  var dom_peer_table, peer_data;
+  
+  peer_data = compilePeerData( who );
+	
+	var i = 1;
+
+  peer_data.forEach(function( peer ){ 
+		peer['rank'] = i; 
+		i++;
+		} ); //add manual rank instead of altering table cache
+
+	//outerPeerData = peer_data;
+
+	if (is_initialized) {
+		p_table
+       .clear()
+		   .rows.add( peer_data )
+		   .draw();
+	} 
+	 else { 
+	  
+
+    p_table = $( '#peers' ).DataTable( {      
+      "scrollY":  "800px",
+      "scrollCollapse": true,
+      "paging": false,
+      "searching": true,
+      "processing": true,
+      data: peer_data,
+      "columns": [
+        { "data": "rank", "searchable": false },
+        { "data": "targetid", "visible": false },
+        { "data": "thisid", "visible": false },
+        { "data": "reverseRank" },
+        { "data": "unitid" },
+        { "data": "name"}, 
+        //{ "data": "url"},
+        { "data": "city"},
+        { "data": "state"},
+        { "data": "control"},
+        { "data": "degree"},
+        { "data": "locale"},
+        { "data": "size"},
+        { "data": "programs" },
+        { "data": "matches" },
+        { "data": "pctMatch" },
+        { "data": "pctOfPrograms" }
+
+      ]
+
+    } );
+       
+    is_initialized = true;
+
+  };
+
+  offloadRelativeRanks(who, peer_data, p_table);
+
+
+};
+
+  return {
+    initReport        : initReport,
+    addRelativeRanks  : addRelativeRanks,
+
+  };
+
+})();
+
+
+
+$( document ).ready( function() {
+  
+	//document.getElementById('loading').className = 'status processing';
+  
+	peers.initReport(366252);
+
+	//document.getElementById('loading').className = 'status ready';
+	
+} );
+
+
+
+
+	</script>
+</head>
+<body>
+
+    <div class="header">
+       
+        <!--<input type="button" value="Print this page" onClick="window.print()">-->
+    <div class="status ready" id="status">
+ 		</div>
+		 <div id="controls">
+			 <h4>Choose your Institution here:</h4>
+ 				<input type="text" id="txtUnitID" value=366252>
+        <input type="button" value="Initialize or Reset Report" 
+				 	onClick="peers.initReport(parseInt(document.getElementById('txtUnitID').value))">
+		</div>
+
+</div>
+
+	<div class="container">
+		<H1>Peer Explorer v3 </H1>
+		Pennsylvania College of Technology, Office of Assessment, Research, and Planning
+		<h4>Notes: <ul>
+					<li>The source for this data is: ____</li>
+					<li>Requires Javascript</li>
+					<li>Includes degree-granting institutions only.</li>
+					<li>For other questions, issues, or comments, please contact tcm16@pct.edu.</li>
+					</ul></h4>
+
+			<table id="peers" class="display" cellspacing="0" width="800">
+				<thead>
+					<tr><th>Rank</th>
+						<th>Parent</th>
+						<th>Parent CIPs</th>
+						<th>Reverse Rank</th>
+						<th>Peer</th>
+			<th>Name</th>
+       	 	<!-- <th>URL</th>-->
+        	<th>City</th>
+        	<th>State</th>
+        	<th>Control</th>
+        	<th>Highest Degree</th>
+        	<th>Locale</th>
+        	<th>Size</th>
+						<th>Peer CIPs</th>
+						<th>Peer Matches</th>
+						<th>% Match</th>
+						<th>% of Peer Programs</th>						
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td> </td>
+						<td> </td>
+					</tr>
+	
+				</tbody>
+				<tfoot> <tr>
+					<th>Rank</th>
+						<th>Parent</th>
+						<th>Parent CIPs</th>
+						<th>Reverse Rank</th>
+						<th>Peer</th>
+			    <th>Name</th>
+       	 	<!-- <th>URL</th>-->
+        	<th>City</th>
+        	<th>State</th>
+        	<th>Control</th>
+        	<th>Highest Degree</th>
+        	<th>Locale</th>
+        	<th>Size</th>
+						<th>Peer CIPs</th>
+						<th>Peer Matches</th>
+						<th>% Match</th>
+						<th>% of Peer Programs</th>					
+					</tr>
+				</tfoot>
+
+			</table>
+
+		</div>
+				
+</body>
+</html>
