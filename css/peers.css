@@ -1,3 +1,5 @@
+html {overflow-y: scroll;}
+
 .dataTables_filter{
     position: fixed;
     top: 185px;
@@ -15,8 +17,10 @@
     }
 
 span {
-  display: inline-block;
-  vertical-align: middle;
+  display: inline-block; 
+  vertical-align: top;
+  text-align: left;
+  position: relative;
   line-height: normal;
 }
 
@@ -46,11 +50,11 @@ span {
     right: 25px;
     width: 500px;
     height: 75px;
-    line-height: 75px;
+    /*line-height: 75px;*/
     padding: 10px;
     border: 1px solid;
     background-color: lightgrey;
-    text-align: center;
+    text-align: left;
 }
 
 #status {

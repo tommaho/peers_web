@@ -35,26 +35,49 @@ var peers = (function(){
   
 	var current_parent, progress_bar_counter = 0;
 
+  var current_family = 0;
+
   setProgramCounts = function(){ //counts is defined in the parent scope 
                                 // and re-used after initialization
     var cur_unit_id;
+
+
     programs.forEach( function( element ) {
       cur_unit_id = element["UNITID"];
-      if ( program_counts[ cur_unit_id ] ){
-				program_counts[ cur_unit_id ] += 1;
-			} 
-			else {
-				program_counts[ cur_unit_id ] = 1;
-			};
+
+      if  ( current_family == 0 ) {
+
+        if ( program_counts[ cur_unit_id ] ){
+          program_counts[ cur_unit_id ] += 1;
+        } 
+        else {
+          program_counts[ cur_unit_id ] = 1;
+        };
+
+      }
+      else {
+
+        if ( program_counts[ cur_unit_id ] 
+          && element["FAMILY"] == current_family){
+          program_counts[ cur_unit_id ] += 1;
+        } 
+        else if (element["FAMILY"] == current_family) {
+          program_counts[ cur_unit_id ] = 1;
+        };
+
+      }
     });
   };
 
-  setProgramCounts(); 
+  
 
   getMatchCounts = function(target_programs){
 	  var matches = {}, 
         match_count = 0,
         cur_unit_id;
+
+  
+
     programs.forEach( function( element ) {
       cur_unit_id = element["UNITID"];
 			
@@ -78,16 +101,25 @@ var peers = (function(){
 
   getTargetPrograms = function( whose ){
     return programs.filter(function test( x ){
-			return x["UNITID"] == whose
-		  }).map( function( x ){ return x["CIP-AW"] } ); 
+      if ( current_family == 0 ) { //0 means all sections, default
+    	  return x["UNITID"] == whose 
+      }
+      else {
+        return (x["UNITID"] == whose && x["FAMILY"] == current_family);
+      }
+		  
+    }).map( function( x ){ return x["CIP-AW"] } ); 
   };
+
+
+
   var offloadRelativeRanks = function(who, peer_data, p_table){
    
    
 
     var worker = new Worker("js/relative_rank_worker.js");
     var for_who = peer_data.map(function(x){return x.thisid});
-    worker.postMessage([who, for_who, programs]);
+    worker.postMessage([who, for_who, programs, current_family]);
 		
 		document.getElementById('status').innerHTML = 'Calculating reverse ranks...';
    
@@ -130,14 +162,21 @@ var peers = (function(){
 		};
   
 };
+
 	compilePeerData = function( targetID ){
 
     var matches, target_programs, report, unit_ids,
 		  ext_props, pct_match, pct_of_programs, report_line;
 		report = [];	
-	  target_programs = getTargetPrograms(targetID);
+    
+    program_counts = {};
+    
+    setProgramCounts(); 
+
+	  target_programs = getTargetPrograms(targetID );
  
-    matches = getMatchCounts(target_programs);
+    matches = getMatchCounts(target_programs );
+
 		unit_ids = Object.keys( matches ); //only do the work for schools 
                                       //having matches
   	unit_ids.forEach( function( unit ){
@@ -156,7 +195,7 @@ var peers = (function(){
 					"reverseRank" : 0, //will be loaded from web worker
 					
 					"unitid": "<a id=" + unit + " onClick='peers.initReport("
-             + unit + ")' href='#'>" + unit + "</a>",
+             + unit + ", " + current_family + ")' href='#'>" + unit + "</a>",
 					"name": "<a target='_blank' href='" + ext_props[0]["URL"] + "'>" 
 						 + ext_props[0]["NAME"]+ "</a>",
 					//"url": ext_props[0]["URL"],
@@ -181,7 +220,12 @@ var peers = (function(){
 		  } ).slice( 0, 100 );;
 	};
 
-initReport = function ( who ){
+initReport = function ( who, family ){
+
+  family = (typeof family !== 'undefined') ? family : 0; //0 will mean 'ALL' CIP families
+
+  current_family = family;
+
   var dom_peer_table, peer_data;
   
   peer_data = compilePeerData( who );
@@ -249,7 +293,7 @@ initReport = function ( who ){
 
 $( document ).ready( function() {
 
-	peers.initReport(366252);
+	peers.initReport(366252, 0);
 	
 } );
 
@@ -257,8 +301,15 @@ $( document ).ready( function() {
 
   $( function() {
     $( document ).tooltip();
+    $( "#family" ).selectmenu();
+
   } );
   
+  function help_init(){
+    var peer_id = parseInt(document.getElementById('txtUnitID').value);
+    var family_id = parseInt(document.getElementById('family').value);
+    peers.initReport(peer_id, family_id);
+  }
 
 	</script>
 </head>
@@ -269,26 +320,96 @@ $( document ).ready( function() {
         <!--<input type="button" value="Print this page" onClick="window.print()">-->
     <div class="status ready" id="statusx"><span id="status"></span>
  		</div>
+
 		<div id="progressbar">
  		</div>
-		 <div id="controls"> <span>
-			 Choose your Institution here:
-			
- 				<form> <input  title="Enter the IPEDS Unit ID." type="text" id="txtUnitID" value=366252>
-        <input type="button" value="Initialize or Reset Report" 
-				 	onClick="peers.initReport(parseInt(document.getElementById('txtUnitID').value))"></form>
-			 </span></div>
+
+		 <div id="controls"><form>
+			 Institution:			
+ 				 <input  title="Enter the IPEDS Unit ID." type="text" 
+         id="txtUnitID" value=366252><br>
+
+       <!--<label for="family">CIP family:</label>-->
+
+    <select name="family" id="family">
+
+      <option selected="selected" value = 0>*** All CIP Families ***</option>
+
+<option value=1>1. Agriculture, Agriculture Operations, and Related Sciences.</option>
+<option value=2>2. Agricultural Sciences.</option>
+<option value=3>3. Natural Resources and Conservation.</option>
+<option value=4>4. Architecture and Related Services.</option>
+<option value=5>5. Area, Ethnic, Cultural, and Gender Studies.</option>
+<option value=9>9. Communication, Journalism, and Related Programs.</option>
+<option value=10>10. Communications Technologies/Technicians and Support Services.</option>
+<option value=11>11. Computer and Information Sciences and Support Services.</option>
+<option value=12>12. Personal and Culinary Services.</option>
+<option value=13>13. Education.</option>
+<option value=14>14. Engineering.</option>
+<option value=15>15. Engineering Technologies/Technicians.</option>
+<option value=16>16. Foreign languages, literatures, and Linguistics.</option>
+<option value=19>19. Family and Consumer Sciences/Human Sciences.</option>
+<option value=21>21. Programs for Series 21.</option>
+<option value=21>21. Technology Education/Industrial Arts.</option>
+<option value=22>22. Legal Professions and Studies.</option>
+<option value=23>23. English Language and Literature/Letters.</option>
+<option value=24>24. Liberal Arts and Ssciences, General Studies and Humanities.</option>
+<option value=25>25. Library Science.</option>
+<option value=26>26. Biological and Biomedical Sciences.</option>
+<option value=27>27. Mathematics and Statistics.</option>
+<option value=28>28. Programs for Series 28.</option>
+<option value=28>28. Reserve Officer Training Corps (JROTC, ROTC).</option>
+<option value=29>29. Military Technologies.</option>
+<option value=30>30. Multi/Interdisciplinary Studies.</option>
+<option value=31>31. Parks, Recreation, Leisure, and Fitness Studies.</option>
+<option value=32>32. Basic Skills.</option>
+<option value=33>33. Citizenship Activities.</option>
+<option value=34>34. Health-related Knowledge and Skills.</option>
+<option value=35>35. Interpersonal and Social Skills.</option>
+<option value=36>36. Leisure and Recreational Activities.</option>
+<option value=37>37. Personal Awareness and Self-Improvement.</option>
+<option value=38>38. Philosophy and Religious Studies.</option>
+<option value=39>39. Theology and Religious Vocations.</option>
+<option value=40>40. Physical Sciences.</option>
+<option value=41>41. Science Technologies/Technicians.</option>
+<option value=42>42. Psychology.</option>
+<option value=43>43. Security and Protective Services.</option>
+<option value=44>44. Public Administration and Social Service Professions.</option>
+<option value=45>45. Social Sciences.</option>
+<option value=46>46. Construction Trades.</option>
+<option value=47>47. Mechanic and Repair Technologies/Technicians.</option>
+<option value=48>48. Precision Production.</option>
+<option value=49>49. Transportation and Materials Moving.</option>
+<option value=50>50. Visual and Performing Arts.</option>
+<option value=51>51. Health Professions and Related Clinical Sciences.</option>
+<option value=52>52. Business, Management, Marketing, and Related Support Services.</option>
+<option value=53>53. Programs for Series 53.</option>
+<option value=53>53. High School/Secondary Diplomas and Certificates.</option>
+<option value=54>54. History  (new)</option>
+<option value=55>55. Programs for Series 55 (French/Canadian Language and Literature/Letters)</option>
+<option value=60>60. Residency Programs.</option>
+
+
+    </select>
+
+        <input class="ui-button ui-widget ui-corner-all" 
+        onClick="help_init()"
+        value="Generate Report">
+
+    </form>
+    
+			 </div>
 
 </div>
 
 	<div class="container">
 		<div id='about'>
 		<H2>Feature Branch: CIP Family Filter</H2>
-		Suggests peer institutions based on relative <span title="Classification of Instructional Program">
-		<a href="https://nces.ed.gov/ipeds/cipcode/Default.aspx" target="_new">CIP</a></span> composition.
+		Suggests peer institutions based on relative <span title="Classification of Instructional Program">CIP</span> composition.
 		<h4>Notes:</h4> <ul>
 					<li>Requires Javascript</li>
-					<li>Data source: <a target='_blank' href='https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx'>IPEDS 2015 IC and Completions</a> </li>
+					<li>Data source: <a target='_blank' href='https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx'>IPEDS 2015 IC and Completions</a>, 
+          <a href="https://nces.ed.gov/pubs2002/cip2000/index.asp">CIP 2000</a> </li>
 					<li>Includes degree-granting institutions only.</li>
 					<li>For questions, issues, or comments, please contact <a href="mailto:tcm16@pct.edu">tcm16@pct.edu</a>.</li>
 					</ul>
@@ -309,10 +430,10 @@ $( document ).ready( function() {
         	<th>Highest Degree</th>
         	<th>Locale</th>
         	<th>Size</th>
-						<th title="Number of distinct, non-99, CIP code and award level combinations having completers in IPEDS 2015 release-ready data set.">Peer CIPs</th>
-						<th title="Number of Peer CIP - award levels shared with the rank 1 institution.">Peer Matches</th>
-						<th title="Percent of Peer CIP - award levels shared with the rank 1 institution.">% Match</th>
-						<th title="Portion of this institution's Peer CIP - award levels represented by matches.">% of Peer Programs</th>						
+						<th title="Number of distinct, non-99 CIP codes having completers in IPEDS 2015 release-ready data set.">Peer CIPs</th>
+						<th title="Number of Peer CIPs shared with the rank 1 institution.">Peer Matches</th>
+						<th title="Percent of Peer CIPs shared with the rank 1 institution.">% Match</th>
+						<th title="Portion of this institution's Peer CIPs represented by matches.">% of Peer Programs</th>						
 					</tr>
 				</thead>
 				<tbody>
