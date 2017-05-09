@@ -1,39 +1,82 @@
-
 .dataTables_filter{
     position: fixed;
     top: 185px;
     right: 25px;
     width: 500px;
     height: 25px;
+    line-height: 25px;
     padding: 10px;
     border: 1px solid;
     background-color: lightgrey;
+    text-align: center;
 }
 .dataTables_filter input { 
     width: 400px; 
     }
 
+span {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: normal;
+}
 
+#about {
+  position: fixed;
+    top: 25px;
+    left: 25px;
+    width: 500px;
+    height: 250px;
+    
+    padding: 10px;
+    border: 1px solid;
+    background-color: lightgrey;
+    text-align: left;
+}
+
+#peer_div{
+  position: fixed;
+  top: 300px;
+  left: 25px;
+  width: 95%;
+  height: 100%;
+}
 #controls {
     position: fixed;
     top: 25px;
     right: 25px;
     width: 500px;
     height: 75px;
+    line-height: 75px;
     padding: 10px;
     border: 1px solid;
     background-color: lightgrey;
+    text-align: center;
 }
 
 #status {
     position: fixed;
-    top: 130px;
+    top: 135px;
     right: 25px;
     width: 500px;
-    height: 25px;
+    height: 45px;
     padding: 10px;
-    border: 1px solid;
+    /*border: 1px solid;*/
+    text-align: center;
 }
+
+#progressbar {
+    position: fixed;
+    top: 130px;
+    right: 25px;
+    width: 520px;
+    height: 45px;
+    /*padding: 10px;*/
+    border: 1px solid;
+    /*text-align: center;*/
+    z-index: -1;
+   
+}
+
 
 .working {
     background-color: yellow;
@@ -42,9 +85,15 @@
 .complete {
     background-color: green;
 }
+
 body {
     font-family: "Open Sans", Arial, Helvetica, sans-serif;
     color: #444;
     background-color: #fefefe;
     font-size: 1rem;
 }
+
+/*label {
+    display: inline-block;
+    width: 5em;
+  }*/

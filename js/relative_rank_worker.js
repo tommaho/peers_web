@@ -1,14 +1,18 @@
-
 //returns an array of peers and ranks relative to target
 
-var targetID, for_who, programs;
+var targetID, current_family, for_who, programs;
 
 onmessage = function(e){
   targetID = e.data[0];
   for_who = e.data[1];
   programs = e.data[2];
+  current_family = e.data[3];
   work();
-  postMessage([999999, 0]); // complete
+
+  postMessage([999999, 999999, 0]); // complete
+  
+  //console.log("work complete");
+
 };
 
 
@@ -20,7 +24,7 @@ var reverseRankList = {};
 
  for_who.forEach( 
     function(school){
-    postMessage([parseInt(school), getRelativeRank( school, targetID )])
+    postMessage([targetID, parseInt(school), getRelativeRank( school, targetID )])
     } );
  };
 
@@ -28,8 +32,14 @@ var reverseRankList = {};
 
   getTargetPrograms = function( whose ){
     return programs.filter(function test( x ){
-			return x["UNITID"] == whose
-		  }).map( function( x ){ return x["CIP-AW"] } ); 
+      if ( current_family == 0 ) { //0 means all sections, default
+    	  return x["UNITID"] == whose 
+      }
+      else {
+        return (x["UNITID"] == whose && x["FAMILY"] == current_family);
+      }
+		  
+    }).map( function( x ){ return x["CIP-AW"] } ); 
 
   };
 
@@ -81,4 +91,4 @@ var reverseRankList = {};
 			});
       return rank_list.map(function(x){return parseInt(x[0])}).indexOf(targetID) + 1;
     
-	};
+};
