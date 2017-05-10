@@ -3,257 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title>Peer Institution Finder</title>
-    <style>
-     
-  </style>
+<link rel="stylesheet" href="css/jquery-ui.css">
+<link rel="stylesheet" type="text/css" href="css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="css/peers.css">
+
 	<script type="text/javascript" language="javascript" src="js/jquery-3.1.0.min.js">
 	</script>
 	<script type="text/javascript" language="javascript" src="js/jquery.dataTables.js">
 	</script>
   <script src="js/jquery-ui.min.js"></script>
 
-	<script type="text/javascript" language="javascript" src="data/programs.js">
-	</script>
-    <script type="text/javascript" language="javascript" src="data/schools.js">
-	</script>
-  
-
- <link rel="stylesheet" href="css/jquery-ui.css">
-<link rel="stylesheet" type="text/css" href="css/jquery.dataTables.css">
-<link rel="stylesheet" type="text/css" href="css/peers.css">
-
 <script type="text/javascript" language="javascript" class="init">
 
-'use strict';
-
-var peers = (function(){
-  
-  var initReport, addRelativeRanks, getRelativeRank, compilePeerData, 
-    reloadTable, getTargetPrograms, setProgramCounts, getMatchCounts;
-  
-  var p_table, is_initialized = false, program_counts = {}; 
-  
-	var current_parent, progress_bar_counter = 0;
-
-  setProgramCounts = function(){ //counts is defined in the parent scope 
-                                // and re-used after initialization
-    var cur_unit_id;
-    programs.forEach( function( element ) {
-      cur_unit_id = element["UNITID"];
-      if ( program_counts[ cur_unit_id ] ){
-				program_counts[ cur_unit_id ] += 1;
-			} 
-			else {
-				program_counts[ cur_unit_id ] = 1;
-			};
-    });
-  };
-
-  setProgramCounts(); 
-
-  getMatchCounts = function(target_programs){
-	  var matches = {}, 
-        match_count = 0,
-        cur_unit_id;
-    programs.forEach( function( element ) {
-      cur_unit_id = element["UNITID"];
-			
-      if( target_programs.indexOf (element["CIP-AW"] ) >= 0){ 
-        // if this cip_aw is in target_programs, we have a match
-      	match_count = 1;
-        if ( matches[ cur_unit_id ] ){ //if the in the matches array
-          matches[ cur_unit_id ] += match_count; // add it
-        } 
-        else {
-          matches[ cur_unit_id ] = match_count; 
-        };
-			} 
-			else {
-				match_count = 0;
-			};
-		});
-    
-    return matches;
-  };
-
-  getTargetPrograms = function( whose ){
-    return programs.filter(function test( x ){
-			return x["UNITID"] == whose
-		  }).map( function( x ){ return x["CIP-AW"] } ); 
-  };
-  var offloadRelativeRanks = function(who, peer_data, p_table){
-   
-   
-
-    var worker = new Worker("js/relative_rank_worker.js");
-    var for_who = peer_data.map(function(x){return x.thisid});
-    worker.postMessage([who, for_who, programs]);
-		
-		document.getElementById('status').innerHTML = 'Calculating reverse ranks...';
-   
-
-		worker.onmessage = function(e){
-				
-
-			if (e.data[0] === current_parent || e.data[0] === 999999) {
-
-				//console.log("signal value: ", e.data[1]);
-
-				if (e.data[1] === 999999){
-					//console.log("complete signal");
-					document.getElementById('status').innerHTML = 'Calculations complete!';
-				}
-				else {
-					var peer_row_id = p_table.rows(
-					function (idx, data, node) {
-						return data.thisid == e.data[1];
-						}
-					).indexes();
-					
-					$( "#progressbar" ).progressbar({ 
-						value: progress_bar_counter
-					});
-					
-					progress_bar_counter ++;
-
-					try {
-						p_table.cell(p_table.row(peer_row_id), p_table.column(3))
-							.data(parseInt(e.data[2])).draw(false);      
-						
-					}
-					catch (TypeError) {
-						console.log("ERROR: Orphaned update callback, premature re-initializaion.");
-						console.log("Lost data for:", e.data[1])
-					}
-				}
-			}
-		};
-  
-};
-	compilePeerData = function( targetID ){
-
-    var matches, target_programs, report, unit_ids,
-		  ext_props, pct_match, pct_of_programs, report_line;
-		report = [];	
-	  target_programs = getTargetPrograms(targetID);
- 
-    matches = getMatchCounts(target_programs);
-		unit_ids = Object.keys( matches ); //only do the work for schools 
-                                      //having matches
-  	unit_ids.forEach( function( unit ){
-			if ( matches[unit] > 0 ){		//for each non-zero unitid in mathes:
-				ext_props = schools.filter( function test( x ){
-					return x["UNITID"] == unit
-				} );
-				
-				pct_match = (matches[unit]  / matches[targetID]) * 100;
-				pct_of_programs = (matches[unit] / program_counts[unit]) * 100;
-				
-				report_line = {
-					"targetid": targetID,
-					"thisid": unit,
-					
-					"reverseRank" : 0, //will be loaded from web worker
-					
-					"unitid": "<a id=" + unit + " onClick='peers.initReport("
-             + unit + ")' href='#'>" + unit + "</a>",
-					"name": "<a target='_blank' href='" + ext_props[0]["URL"] + "'>" 
-						 + ext_props[0]["NAME"]+ "</a>",
-					//"url": ext_props[0]["URL"],
-					"city": ext_props[0]["CITY"],
-					"state": ext_props[0]["STATE"],
-					"control": ext_props[0]["CONTROL"],
-					"degree": ext_props[0]["DEGREE"],
-					"locale": ext_props[0]["LOCALE"],
-					"size": ext_props[0]["SIZE"],
-					"programs": program_counts[unit],
-					"matches": matches[unit],
-					"pctMatch": pct_match.toFixed(2), 
-					"pctOfPrograms": pct_of_programs.toFixed(2)
-				};
-				report.push( report_line );
-			};
-				
-			});
-		
-		return report.sort( function( a, b ){ 
-			return b.pctMatch - a.pctMatch;
-		  } ).slice( 0, 100 );;
-	};
-
-initReport = function ( who ){
-  var dom_peer_table, peer_data;
-  
-  peer_data = compilePeerData( who );
-	
-	current_parent = who;
-	progress_bar_counter = 0; //this is a module level variable to prevent progress bar jitter
-														// when a parent is left and returned to while old reverse rank callbacks are still 
-														// firing
-
-	var i = 1;
-  peer_data.forEach(function( peer ){ 
-		peer['rank'] = i; 
-		i++;
-		peer['pctMatch'] += '%';
-		peer['pctOfPrograms'] += '%'
-
-	} ); //add manual rank instead of altering table cache
-			// also add percentages here. If added during compilation, 
-			// returned results are sorted as text
-	
-	if (is_initialized) {
-		p_table
-       .clear()
-		   .rows.add( peer_data )
-		   .draw();
-	} 
-	 else { 
-	  
-    p_table = $( '#peers' ).DataTable( {      
-      "scrollY":  "500px",
-      "scrollCollapse": true,
-      "paging": false,
-      "searching": true,
-      "processing": true,
-      data: peer_data,
-      "columns": [
-        { "data": "rank", "searchable": false },
-        { "data": "targetid", "visible": false },
-        { "data": "thisid", "visible": false },
-        { "data": "reverseRank" },
-        { "data": "unitid" },
-        { "data": "name"}, 
-        { "data": "city"},
-        { "data": "state"},
-        { "data": "control"},
-        { "data": "degree"},
-        { "data": "locale"},
-        { "data": "size"},
-        { "data": "programs" },
-        { "data": "matches" },
-        { "data": "pctMatch" },
-        { "data": "pctOfPrograms" }
-      ]
-    } );
-       
-    is_initialized = true;
-  };
-  offloadRelativeRanks(who, peer_data, p_table);
-};
-  return {
-    initReport        : initReport,
-    addRelativeRanks  : addRelativeRanks,
-  };
-})();
 
 $( document ).ready( function() {
 
 	peers.initReport(366252);
 	
 } );
-
-  
 
   $( function() {
     $( document ).tooltip();
@@ -267,14 +34,14 @@ $( document ).ready( function() {
     <div class="header">
        
         <!--<input type="button" value="Print this page" onClick="window.print()">-->
-    <div class="status ready" id="statusx"><span id="status"></span>
+    <div class="status ready" id="statusx"><span id="status">Loading data...</span>
  		</div>
 		<div id="progressbar">
  		</div>
 		 <div id="controls"> <span>
-			 Choose your Institution here:
+			 Enter your instition's IPEDS Unit ID:
 			
- 				<form> <input  title="Enter the IPEDS Unit ID." type="text" id="txtUnitID" value=366252>
+ 				<form> <input  title="Enter your institution's IPEDS Unit ID" type="text" id="txtUnitID" value=366252>
         <input type="button" value="Initialize or Reset Report" 
 				 	onClick="peers.initReport(parseInt(document.getElementById('txtUnitID').value))"></form>
 			 </span></div>
@@ -299,7 +66,6 @@ $( document ).ready( function() {
 					<tr><th title="Rank for this institution, sorted by % Match">Rank</th>
 						<th>Parent</th>
 						<th>Parent CIPs</th>
-						<th title="Where the rank 1 institution appears in the Peer Report for this institution.">Reverse Rank</th>
 						<th title="IPEDS Unit ID. Click to recalculate peer report for this institution.">Peer</th>
 			<th>Name</th>
        	 	<!-- <th>URL</th>-->
@@ -313,6 +79,7 @@ $( document ).ready( function() {
 						<th title="Number of Peer CIP - award levels shared with the rank 1 institution.">Peer Matches</th>
 						<th title="Percent of Peer CIP - award levels shared with the rank 1 institution.">% Match</th>
 						<th title="Portion of this institution's Peer CIP - award levels represented by matches.">% of Peer Programs</th>						
+							<th title="Where the rank 1 institution appears in the Peer Report for this institution.">Reverse Rank</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -326,7 +93,7 @@ $( document ).ready( function() {
 					<th>Rank</th>
 						<th>Parent</th>
 						<th>Parent CIPs</th>
-						<th>Reverse Rank</th>
+
 						<th>Peer</th>
 			    <th>Name</th>
         	<th>City</th>
@@ -335,10 +102,11 @@ $( document ).ready( function() {
         	<th>Highest Degree</th>
         	<th>Locale</th>
         	<th>Size</th>
-						<th>Peer CIPs</th>
-						<th>Peer Matches</th>
-						<th>% Match</th>
-						<th>% of Peer Programs</th>					
+					<th>Peer CIPs</th>
+					<th>Peer Matches</th>
+					<th>% Match</th>
+					<th>% of Peer Programs</th>					
+					<th>Reverse Rank</th>
 					</tr>
 				</tfoot>
 
@@ -347,4 +115,16 @@ $( document ).ready( function() {
 		</div>
 				
 </body>
+
+
+	<script type="text/javascript" language="javascript" src="data/programs.js">
+	</script>
+    <script type="text/javascript" language="javascript" src="data/schools.js">
+	</script>
+
+  <script type="text/javascript" language="javascript" src="js/peers.js">
+	</script>
+
+
+
 </html>
