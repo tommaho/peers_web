@@ -92,7 +92,7 @@ var peers = (function(){
 					progress_bar_counter ++;
 
 					try {
-						p_table.cell(p_table.row(peer_row_id), p_table.column(15))
+						p_table.cell(p_table.row(peer_row_id), p_table.column(16))
 							.data(parseInt(e.data[2])).draw(false);      
 						
 					}
@@ -165,10 +165,27 @@ initReport = function ( who ){
 														// when a parent is left and returned to while old reverse rank callbacks are still 
 														// firing
 
-	var i = 1;
+	var rownum = 0, denseRank = 0, sparseRank = 0;
+
+	var thisPctMatch = peer_data[0]['pctMatch'];
+	var lastPctMatch = peer_data[0]['pctMatch'];
+
   peer_data.forEach(function( peer ){ 
-		peer['rank'] = i; 
-		i++;
+		
+		thisPctMatch = peer['pctMatch'];
+		
+		rownum += 1;
+
+		if(thisPctMatch !== lastPctMatch){
+			denseRank += 1;
+			sparseRank = rownum;
+		}
+
+		lastPctMatch = thisPctMatch;
+
+		peer['row'] = rownum;
+		peer['rank'] = sparseRank; 
+		//i++;
 		peer['pctMatch'] += '%';
 		peer['pctOfPrograms'] += '%'
 
@@ -192,6 +209,7 @@ initReport = function ( who ){
       "processing": true,
       data: peer_data,
       "columns": [
+				{ "data": "row", "searchable": false },
         { "data": "rank", "searchable": false },
         { "data": "targetid", "visible": false },
         { "data": "thisid", "visible": false },

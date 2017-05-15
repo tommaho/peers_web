@@ -89,6 +89,8 @@ var reverseRankList = {};
 			rank_list.sort(function( a, b ) {
 				return b[1] - a[1];
 			});
+
+      console.log(rank_list);
       return rank_list.map(function(x){return parseInt(x[0])}).indexOf(targetID) + 1;
     
 };
