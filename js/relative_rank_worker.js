@@ -92,18 +92,14 @@ var reverseRankList = {};
 
       var rownum = 0, denseRank = 0, sparseRank = 0;
 
-// I think there might be a problem here:
 	    var thisPctMatch = rank_list[0][1];
 	    var lastPctMatch = rank_list[0][1];
-//
 
-var BreakException = {};
+      var index, len;
 
-try {
+      for (index = 0, len = rank_list.length; index < len; ++index) { 
 
-      rank_list.forEach( function(peer){
-
-        thisPctMatch = peer[1];
+        thisPctMatch = rank_list[index][1];
             
             rownum += 1;
 
@@ -114,26 +110,11 @@ try {
 
             lastPctMatch = thisPctMatch;
             
-            if (peer[0] == parseInt(targetID)){
-              console.log("match found for: ", peer[0]);
-              console.log("returning: ", sparseRank);
-              throw BreakException;
+            if (rank_list[index][0] == parseInt(targetID)){
+              break;
             }
-
-      }      ); 
-} catch(e) {
-  if (e !== BreakException) throw e;
-}
-
-return sparseRank;
-
-//       // return rank_list.map(
-//       //     function(x){
-          
-//       //     return parseInt(x[0])
-//       //   }       
-//       //     ).indexOf(targetID) + 1;
-
+      }      
       
-    
+return sparseRank;
+      
 };

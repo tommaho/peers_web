@@ -165,7 +165,7 @@ initReport = function ( who ){
 														// when a parent is left and returned to while old reverse rank callbacks are still 
 														// firing
 
-	var rownum = 0, denseRank = 0, sparseRank = 0;
+	var rownum = 0, denseRank = 0, sparseRank = 1;
 
 	var thisPctMatch = peer_data[0]['pctMatch'];
 	var lastPctMatch = peer_data[0]['pctMatch'];
