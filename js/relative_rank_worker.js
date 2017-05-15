@@ -90,7 +90,50 @@ var reverseRankList = {};
 				return b[1] - a[1];
 			});
 
-      console.log(rank_list);
-      return rank_list.map(function(x){return parseInt(x[0])}).indexOf(targetID) + 1;
+      var rownum = 0, denseRank = 0, sparseRank = 0;
+
+// I think there might be a problem here:
+	    var thisPctMatch = rank_list[0][1];
+	    var lastPctMatch = rank_list[0][1];
+//
+
+var BreakException = {};
+
+try {
+
+      rank_list.forEach( function(peer){
+
+        thisPctMatch = peer[1];
+            
+            rownum += 1;
+
+            if(thisPctMatch !== lastPctMatch){
+              denseRank += 1;
+              sparseRank = rownum;
+            }
+
+            lastPctMatch = thisPctMatch;
+            
+            if (peer[0] == parseInt(targetID)){
+              console.log("match found for: ", peer[0]);
+              console.log("returning: ", sparseRank);
+              throw BreakException;
+            }
+
+      }      ); 
+} catch(e) {
+  if (e !== BreakException) throw e;
+}
+
+return sparseRank;
+
+//       // return rank_list.map(
+//       //     function(x){
+          
+//       //     return parseInt(x[0])
+//       //   }       
+//       //     ).indexOf(targetID) + 1;
+
+      
     
 };

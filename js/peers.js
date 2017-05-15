@@ -156,8 +156,8 @@ var peers = (function(){
 	};
 
 initReport = function ( who ){
+
   var dom_peer_table, peer_data;
-  
   peer_data = compilePeerData( who );
 	
 	current_parent = who;
