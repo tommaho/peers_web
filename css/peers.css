@@ -1,3 +1,16 @@
+/*// Latest source also available at:
+// https://github.com/tommaho/peers_web
+//
+//CSS
+//
+//Lots to do as of 5-17-17, contact tcm16@pct.edu
+//with questions.
+*/
+
+.container {
+    width:1440px;
+}
+
 .dataTables_filter{
     position: fixed;
     top: 185px;
@@ -37,7 +50,7 @@ span {
   position: fixed;
   top: 300px;
   left: 25px;
-  width: 95%;
+  width: 1440px;     /*Smaller than this and the data table scrolls internally, misaligned with table headers*/
   height: 100%;
 }
 #controls {
@@ -60,7 +73,6 @@ span {
     width: 500px;
     height: 45px;
     padding: 10px;
-    /*border: 1px solid;*/
     text-align: center;
 }
 
@@ -70,13 +82,10 @@ span {
     right: 25px;
     width: 520px;
     height: 45px;
-    /*padding: 10px;*/
     border: 1px solid;
-    /*text-align: center;*/
     z-index: -1;
    
 }
-
 
 .working {
     background-color: yellow;
@@ -93,7 +102,3 @@ body {
     font-size: 1rem;
 }
 
-/*label {
-    display: inline-block;
-    width: 5em;
-  }*/

@@ -15,6 +15,12 @@
 
 <script type="text/javascript" language="javascript" class="init">
 
+// Latest source also available at:
+// https://github.com/tommaho/peers_web
+//
+//Long to do list as of 5-17-17, contact tcm16@pct.edu
+//with questions.
+
 
 $( document ).ready( function() {
 
@@ -33,7 +39,6 @@ $( document ).ready( function() {
 
     <div class="header">
        
-        <!--<input type="button" value="Print this page" onClick="window.print()">-->
     <div class="status ready" id="statusx"><span id="status">Loading data...</span>
  		</div>
 		<div id="progressbar">
@@ -50,7 +55,7 @@ $( document ).ready( function() {
 
 	<div class="container">
 		<div id='about'>
-		<H2>Peer Finder - DEVELOPMENT BRANCH</H2>
+		<H2>Peer Institution Finder</H2>
 		Suggests peer institutions based on relative <span title="Classification of Instructional Program">
 		<a href="https://nces.ed.gov/ipeds/cipcode/Default.aspx" target="_new">CIP</a></span> composition.
 		<h4>Notes:</h4> <ul>
@@ -65,10 +70,10 @@ $( document ).ready( function() {
 				<thead>
 					
 					<tr><th title="Row number.">Row</th>
-					<th title="Rank for this institution, sorted by % Match">Rank</th>
+					<th title="Rank for this institution, sorted by % Match.">Rank</th>
 						<th>Parent</th>
 						<th>Parent CIPs</th>
-						<th title="IPEDS Unit ID. Click to recalculate peer report for this institution.">Peer</th>
+						<th title="IPEDS Unit ID. Click to recalculate report for that institution.">Peer</th>
 			<th>Name</th>
        	 	<!-- <th>URL</th>-->
         	<th>City</th>
