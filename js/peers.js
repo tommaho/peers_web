@@ -1,3 +1,12 @@
+// Latest source also available at:
+// https://github.com/tommaho/peers_web
+//
+//Primary report initialization and calculation
+//
+//Lots to do as of 5-17-17, contact tcm16@pct.edu
+//with questions.
+
+
 
 'use strict';
 
@@ -24,7 +33,8 @@ var peers = (function(){
     });
   };
 
-  setProgramCounts(); 
+  setProgramCounts(); //called on initialization and potentially again on 
+											//click-initiated recount
 
   getMatchCounts = function(target_programs){
 	  var matches = {}, 
@@ -56,9 +66,12 @@ var peers = (function(){
 			return x["UNITID"] == whose
 		  }).map( function( x ){ return x["CIP-AW"] } ); 
   };
-  var offloadRelativeRanks = function(who, peer_data, p_table){
-   
-   
+
+  var offloadRelativeRanks = function(who, peer_data, p_table){ 
+				//optimization opportunity here. need to profile memory
+				//usage to see if there's a smarter way to share / pass 
+				// access peer data
+
 
     var worker = new Worker("js/relative_rank_worker.js");
     var for_who = peer_data.map(function(x){return x.thisid});
@@ -66,16 +79,12 @@ var peers = (function(){
 		
 		document.getElementById('status').innerHTML = 'Calculating reverse ranks...';
    
-
 		worker.onmessage = function(e){
-				
+				//need to move dom interaction somewhere else
 
 			if (e.data[0] === current_parent || e.data[0] === 999999) {
 
-				//console.log("signal value: ", e.data[1]);
-
 				if (e.data[1] === 999999){
-					//console.log("complete signal");
 					document.getElementById('status').innerHTML = 'Calculations complete!';
 				}
 				else {
@@ -92,11 +101,16 @@ var peers = (function(){
 					progress_bar_counter ++;
 
 					try {
-						p_table.cell(p_table.row(peer_row_id), p_table.column(15))
+						p_table.cell(p_table.row(peer_row_id), p_table.column(16))
 							.data(parseInt(e.data[2])).draw(false);      
 						
 					}
 					catch (TypeError) {
+						//this will happen when the viewer changes parent peers while the worker
+						//is still calculating.
+						//look into: A) a method to short-circuit the worker, B) a better way to
+						// manage statusindicators
+						//
 						console.log("ERROR: Orphaned update callback, premature re-initializaion.");
 						console.log("Lost data for:", e.data[1])
 					}
@@ -106,6 +120,13 @@ var peers = (function(){
   
 };
 	compilePeerData = function( targetID ){
+		//primary peer report compilation
+		//need to break this process at 100 iterations
+		//instead of returning the first 100 of a sorted list
+		//potentially 5k schools long. 
+		//also need module-level configuration to manage max 
+		//iterations etc.
+		//
 
     var matches, target_programs, report, unit_ids,
 		  ext_props, pct_match, pct_of_programs, report_line;
@@ -116,7 +137,7 @@ var peers = (function(){
 		unit_ids = Object.keys( matches ); //only do the work for schools 
                                       //having matches
   	unit_ids.forEach( function( unit ){
-			if ( matches[unit] > 0 ){		//for each non-zero unitid in mathes:
+			if ( matches[unit] > 0 ){		//for each non-zero unitid in matches:
 				ext_props = schools.filter( function test( x ){
 					return x["UNITID"] == unit
 				} );
@@ -131,7 +152,6 @@ var peers = (function(){
              + unit + ")' href='#'>" + unit + "</a>",
 					"name": "<a target='_blank' href='" + ext_props[0]["URL"] + "'>" 
 						 + ext_props[0]["NAME"]+ "</a>",
-					//"url": ext_props[0]["URL"],
 					"city": ext_props[0]["CITY"],
 					"state": ext_props[0]["STATE"],
 					"control": ext_props[0]["CONTROL"],
@@ -156,8 +176,8 @@ var peers = (function(){
 	};
 
 initReport = function ( who ){
+
   var dom_peer_table, peer_data;
-  
   peer_data = compilePeerData( who );
 	
 	current_parent = who;
@@ -165,10 +185,26 @@ initReport = function ( who ){
 														// when a parent is left and returned to while old reverse rank callbacks are still 
 														// firing
 
-	var i = 1;
+	var rownum = 0, denseRank = 0, sparseRank = 1;
+
+	var thisPctMatch = peer_data[0]['pctMatch'];
+	var lastPctMatch = peer_data[0]['pctMatch'];
+
   peer_data.forEach(function( peer ){ 
-		peer['rank'] = i; 
-		i++;
+		
+		thisPctMatch = peer['pctMatch'];
+		
+		rownum += 1;
+
+		if(thisPctMatch !== lastPctMatch){
+			denseRank += 1;
+			sparseRank = rownum;
+		}
+
+		lastPctMatch = thisPctMatch;
+
+		peer['row'] = rownum;
+		peer['rank'] = sparseRank; 
 		peer['pctMatch'] += '%';
 		peer['pctOfPrograms'] += '%'
 
@@ -192,6 +228,7 @@ initReport = function ( who ){
       "processing": true,
       data: peer_data,
       "columns": [
+				{ "data": "row", "searchable": false },
         { "data": "rank", "searchable": false },
         { "data": "targetid", "visible": false },
         { "data": "thisid", "visible": false },

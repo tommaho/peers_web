@@ -1,4 +1,10 @@
-//returns an array of peers and ranks relative to target
+// Latest source also available at:
+// https://github.com/tommaho/peers_web
+//
+//Web worker for reverse rank calculation.
+//
+//Lots to do as of 5-17-17, contact tcm16@pct.edu
+//with questions.
 
 var targetID, current_family, for_who, programs;
 
@@ -11,8 +17,6 @@ onmessage = function(e){
 
   postMessage([999999, 999999, 0]); // complete
   
-  //console.log("work complete");
-
 };
 
 
@@ -89,6 +93,32 @@ var reverseRankList = {};
 			rank_list.sort(function( a, b ) {
 				return b[1] - a[1];
 			});
-      return rank_list.map(function(x){return parseInt(x[0])}).indexOf(targetID) + 1;
-    
+
+      var rownum = 0, denseRank = 0, sparseRank = 1;
+
+	    var thisPctMatch = rank_list[0][1];
+	    var lastPctMatch = rank_list[0][1];
+
+      var index, len;
+
+      for (index = 0, len = rank_list.length; index < len; ++index) { 
+
+        thisPctMatch = rank_list[index][1];
+            
+            rownum += 1;
+
+            if(thisPctMatch !== lastPctMatch){
+              denseRank += 1;
+              sparseRank = rownum;
+            }
+
+            lastPctMatch = thisPctMatch;
+            
+            if (rank_list[index][0] == parseInt(targetID)){
+              break;
+            }
+      }      
+      
+return sparseRank;
+      
 };
