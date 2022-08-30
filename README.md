@@ -1,7 +1,9 @@
 # peers_web
 ####Web based peer institution finder.
 
-Find peer institutions in higher education based on composition of CIP codes. 
+Find peer institutions in higher education based on composition of CIP codes.
+
+Now hosted on github pages at: https://tommaho.github.io/peers_web/peers.html
 
 Data sourced from IPEDS 2015 IC and Completions.
 
